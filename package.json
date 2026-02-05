@@ -1,0 +1,27 @@
+{
+  "name": "snipcss-playwright",
+  "version": "1.0.0",
+  "description": "Extract CSS from live pages and convert to Tailwind using Playwright CDP",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "snipcss-extract": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "mcp": "node dist/mcp-server.js"
+  },
+  "dependencies": {
+    "playwright": "^1.48.2",
+    "cheerio": "1.0.0",
+    "yargs": "^17.7.2",
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0",
+    "@types/node": "^20.10.0",
+    "@types/yargs": "^17.0.32"
+  }
+}

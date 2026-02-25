@@ -6,6 +6,8 @@ import path from 'path';
 import { BrowserManager } from './browser/browser-manager.js';
 import { ExtractionPipeline } from './extraction/extraction-pipeline.js';
 import { ExtractionOptions, ExtractionResult } from './types/index.js';
+import { setApiKey } from './auth/config-manager.js';
+import { checkAccess, verifyApiKey } from './auth/usage-gate.js';
 
 function makeFilename(
   urlStr: string,
@@ -132,8 +134,33 @@ async function main() {
       description: 'Page load timeout in ms',
       default: 30000,
     })
+    .option('api-key', {
+      type: 'string',
+      description: 'Set your SnipCSS Pro API key for unlimited extractions',
+    })
     .help()
     .argv;
+
+  // Handle --api-key: save and verify, then exit
+  if (argv['api-key']) {
+    const key = argv['api-key'] as string;
+    console.error('Verifying API key...');
+    const result = await verifyApiKey(key);
+    if (result.isPro) {
+      setApiKey(key);
+      console.error(`API key verified and saved. Welcome, ${result.email}! You now have unlimited extractions.`);
+    } else {
+      console.error(`API key verification failed: ${result.error || 'Not a Pro account'}`);
+      process.exit(1);
+    }
+  }
+
+  // Check usage/Pro access
+  const access = await checkAccess();
+  if (!access.allowed) {
+    console.error(access.message || 'Access denied. Use --api-key to set your SnipCSS Pro API key.');
+    process.exit(1);
+  }
 
   const browserManager = new BrowserManager();
 
@@ -154,6 +181,10 @@ async function main() {
     if (options.viewport && /^\d+$/.test(options.viewport)) {
       options.customWidth = parseInt(options.viewport, 10);
       options.viewport = 'custom' as any;
+    }
+
+    if (access.message) {
+      console.error(access.message);
     }
 
     console.error(`Extracting CSS from ${argv.url} for selector: ${argv.selector}`);

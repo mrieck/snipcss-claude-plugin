@@ -7,7 +7,15 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { BrowserManager } from './browser/browser-manager.js';
 import { ExtractionPipeline } from './extraction/extraction-pipeline.js';
-import { ExtractionOptions } from './types/index.js';
+import { ExtractionOptions, DEFAULT_VIEWPORTS } from './types/index.js';
+import { setApiKey } from './auth/config-manager.js';
+import { checkAccess, verifyApiKey } from './auth/usage-gate.js';
+import {
+  discoverElements,
+  injectLabelOverlay,
+  removeLabelOverlay,
+  formatElementLegend,
+} from './extraction/element-discovery.js';
 
 const browserManager = new BrowserManager();
 let pipeline: ExtractionPipeline;
@@ -28,9 +36,9 @@ const server = new Server(
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
     {
-      name: 'extract_tailwind',
+      name: 'extract_css_convert_tailwind',
       description:
-        'Extract CSS from a live page element and convert to Tailwind CSS classes. ' +
+        'Extract the CSS of an element subtree or get a Tailwind-converted version. ' +
         'Navigates to the URL, finds the element by CSS selector, extracts all matched CSS rules ' +
         '(including media queries, hover states, pseudo-elements), and converts to Tailwind utility classes.',
       inputSchema: {
@@ -69,16 +77,57 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
+      name: 'set_api_key',
+      description:
+        'Set your SnipCSS Pro API key for unlimited CSS extractions. ' +
+        'Find your API key on your SnipCSS dashboard at snipcss.com/dashboard after upgrading to Pro.',
+      inputSchema: {
+        type: 'object' as const,
+        properties: {
+          api_key: {
+            type: 'string',
+            description: 'Your SnipCSS Pro API key from your dashboard',
+          },
+        },
+        required: ['api_key'],
+      },
+    },
+    {
       name: 'list_page_elements',
       description:
-        'Navigate to a URL and list the major page elements with their CSS selectors. ' +
-        'Useful for discovering which elements to extract before calling extract_tailwind.',
+        'Navigate to a URL and list the major page elements with their CSS selectors, semantic types, ' +
+        'hierarchy context, and visual properties. Scans 2-3 levels deep to find cards, widgets, and forms. ' +
+        'Useful for discovering which elements to extract before calling extract_css_convert_tailwind.',
       inputSchema: {
         type: 'object' as const,
         properties: {
           url: {
             type: 'string',
             description: 'The URL of the page to analyze',
+          },
+        },
+        required: ['url'],
+      },
+    },
+    {
+      name: 'screenshot_page',
+      description:
+        'Take an annotated screenshot of a webpage with numbered labels (#1, #2, #3...) overlaid on ' +
+        'discovered elements. Returns the screenshot image plus a legend mapping each number to its ' +
+        'CSS selector, semantic type, size, and content preview. Use this to visually identify which ' +
+        'element a user is describing (e.g., "the sidebar", "the pricing card") before extracting it.',
+      inputSchema: {
+        type: 'object' as const,
+        properties: {
+          url: {
+            type: 'string',
+            description: 'The URL of the page to screenshot',
+          },
+          viewport: {
+            type: 'string',
+            enum: ['desktop', 'tablet', 'mobile'],
+            default: 'desktop',
+            description: 'Viewport size for the screenshot',
           },
         },
         required: ['url'],
@@ -91,8 +140,51 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
 
-  if (name === 'extract_tailwind') {
+  if (name === 'set_api_key') {
     try {
+      const apiKey = args!.api_key as string;
+      const result = await verifyApiKey(apiKey);
+      if (result.isPro) {
+        setApiKey(apiKey);
+        return {
+          content: [{
+            type: 'text',
+            text: `API key verified and saved. Welcome, ${result.email}! You now have unlimited extractions.`,
+          }],
+        };
+      }
+      return {
+        content: [{
+          type: 'text',
+          text: `API key could not be verified as Pro. ${result.error || 'Please check your key and ensure you have an active Pro subscription.'}`,
+        }],
+        isError: true,
+      };
+    } catch (error: any) {
+      return {
+        content: [{
+          type: 'text',
+          text: `Error verifying API key: ${error.message}`,
+        }],
+        isError: true,
+      };
+    }
+  }
+
+  if (name === 'extract_css_convert_tailwind') {
+    try {
+      // Check usage/Pro access before launching browser
+      const access = await checkAccess();
+      if (!access.allowed) {
+        return {
+          content: [{
+            type: 'text',
+            text: access.message || 'Access denied. Please set your API key with the set_api_key tool.',
+          }],
+          isError: true,
+        };
+      }
+
       if (!pipeline) {
         await browserManager.launch();
         pipeline = new ExtractionPipeline(browserManager);
@@ -110,11 +202,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         options
       );
 
-      const output = formatExtractionResult(
+      let output = formatExtractionResult(
         result,
         args!.url as string,
         args!.selector as string
       );
+
+      // Append remaining extractions notice for free tier
+      if (access.message) {
+        output += `\n\n---\n_${access.message}_`;
+      }
 
       return {
         content: [{ type: 'text', text: output }],
@@ -134,118 +231,24 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   if (name === 'list_page_elements') {
     try {
-      if (!pipeline) {
-        await browserManager.launch();
-        pipeline = new ExtractionPipeline(browserManager);
-      }
+      await browserManager.launch();
 
       const bp = await browserManager.createPage(args!.url as string);
-
-      const elements = await bp.page.evaluate(() => {
-        const results: {
-          tag: string;
-          selector: string;
-          classes: string;
-          id: string;
-          text: string;
-          children: number;
-          rect: { width: number; height: number };
-        }[] = [];
-
-        // Find major structural elements
-        const selectors = [
-          'header',
-          'nav',
-          'main',
-          'footer',
-          'aside',
-          'section',
-          'article',
-          '[role="banner"]',
-          '[role="navigation"]',
-          '[role="main"]',
-          '[role="contentinfo"]',
-        ];
-
-        const seen = new Set<Element>();
-
-        for (const sel of selectors) {
-          const elems = document.querySelectorAll(sel);
-          for (const elem of elems) {
-            if (seen.has(elem)) continue;
-            seen.add(elem);
-
-            const rect = elem.getBoundingClientRect();
-            // Skip tiny/hidden elements
-            if (rect.width < 50 || rect.height < 20) continue;
-
-            let bestSelector = sel;
-            if (elem.id) bestSelector = '#' + elem.id;
-            else if (elem.classList.length > 0) {
-              bestSelector = '.' + [...elem.classList].join('.');
-            }
-
-            results.push({
-              tag: elem.tagName.toLowerCase(),
-              selector: bestSelector,
-              classes: [...elem.classList].join(' '),
-              id: elem.id || '',
-              text: (elem.textContent || '').trim().substring(0, 80),
-              children: elem.children.length,
-              rect: {
-                width: Math.round(rect.width),
-                height: Math.round(rect.height),
-              },
-            });
-          }
-        }
-
-        // Also get direct children of body that are large
-        const bodyChildren = document.body.children;
-        for (const elem of bodyChildren) {
-          if (seen.has(elem)) continue;
-          seen.add(elem);
-
-          const rect = elem.getBoundingClientRect();
-          if (rect.width < 200 || rect.height < 50) continue;
-
-          const tag = elem.tagName.toLowerCase();
-          if (['script', 'style', 'link', 'meta', 'noscript'].includes(tag))
-            continue;
-
-          let bestSelector = tag;
-          if (elem.id) bestSelector = '#' + elem.id;
-          else if (elem.classList.length > 0) {
-            bestSelector = '.' + [...elem.classList].join('.');
-          }
-
-          results.push({
-            tag,
-            selector: bestSelector,
-            classes: [...elem.classList].join(' '),
-            id: elem.id || '',
-            text: (elem.textContent || '').trim().substring(0, 80),
-            children: elem.children.length,
-            rect: {
-              width: Math.round(rect.width),
-              height: Math.round(rect.height),
-            },
-          });
-        }
-
-        return results;
-      });
-
+      const elements = await discoverElements(bp.page);
       await browserManager.closePage(bp);
 
       let output = `## Page Elements for ${args!.url}\n\n`;
-      output += `| Selector | Tag | Size | Children | Preview |\n`;
-      output += `|----------|-----|------|----------|---------|\n`;
+      output += `Found ${elements.length} elements:\n\n`;
+      output += `| # | Selector | Type | Size | Context | Preview |\n`;
+      output += `|---|----------|------|------|---------|--------|\n`;
 
-      for (const elem of elements) {
-        const preview = elem.text.substring(0, 40).replace(/\|/g, '\\|');
-        output += `| \`${elem.selector}\` | ${elem.tag} | ${elem.rect.width}x${elem.rect.height} | ${elem.children} | ${preview} |\n`;
+      for (const el of elements) {
+        const preview = el.textPreview.substring(0, 40).replace(/\|/g, '\\|').replace(/\n/g, ' ');
+        const bgNote = el.backgroundColor && el.backgroundColor !== 'transparent' ? ` bg:${el.backgroundColor}` : '';
+        output += `| #${el.label} | \`${el.selector}\` | ${el.semanticType} | ${el.rect.width}x${el.rect.height}${bgNote} | ${el.parentContext} | ${preview} |\n`;
       }
+
+      output += `\n_Use screenshot_page to see these elements visually with numbered labels._`;
 
       return {
         content: [{ type: 'text', text: output }],
@@ -256,6 +259,76 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           {
             type: 'text',
             text: `Error listing elements: ${error.message}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+  }
+
+  if (name === 'screenshot_page') {
+    try {
+      await browserManager.launch();
+
+      // Determine viewport
+      const viewportName = (args?.viewport as string) || 'desktop';
+      const viewportConfig = viewportName === 'tablet'
+        ? DEFAULT_VIEWPORTS.ipad
+        : viewportName === 'mobile'
+          ? DEFAULT_VIEWPORTS.iphonexs
+          : DEFAULT_VIEWPORTS.default;
+
+      const bp = await browserManager.createPage(args!.url as string);
+
+      // Set viewport if non-default
+      if (viewportName !== 'desktop') {
+        await bp.page.setViewportSize({
+          width: viewportConfig.width,
+          height: viewportConfig.height,
+        });
+        // Allow reflow
+        await bp.page.waitForTimeout(500);
+      }
+
+      // Discover elements
+      const elements = await discoverElements(bp.page);
+
+      // Inject labeled overlay
+      await injectLabelOverlay(bp.page, elements);
+
+      // Take screenshot
+      const screenshotBuffer = await bp.page.screenshot({
+        fullPage: true,
+        type: 'png',
+      });
+
+      // Remove overlay
+      await removeLabelOverlay(bp.page);
+      await browserManager.closePage(bp);
+
+      // Build legend text
+      const legend = formatElementLegend(elements);
+      const pageTitle = args!.url as string;
+
+      return {
+        content: [
+          {
+            type: 'image' as const,
+            data: screenshotBuffer.toString('base64'),
+            mimeType: 'image/png',
+          },
+          {
+            type: 'text',
+            text: `## Annotated Screenshot: ${pageTitle}\n\nViewport: ${viewportConfig.width}x${viewportConfig.height} (${viewportName})\n${elements.length} elements labeled:\n\n${legend}\n\n_Use the # number with list_page_elements output, then call extract_css_convert_tailwind with the selector._`,
+          },
+        ],
+      };
+    } catch (error: any) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error taking screenshot: ${error.message}`,
           },
         ],
         isError: true,

@@ -775,6 +775,12 @@ export function cssToTailwind(property: string, value: string): string | null {
         'ew-resize': 'cursor-ew-resize', 'ns-resize': 'cursor-ns-resize', 'nesw-resize': 'cursor-nesw-resize', 'nwse-resize': 'cursor-nwse-resize',
         'zoom-in': 'cursor-zoom-in', 'zoom-out': 'cursor-zoom-out',
       },
+      'user-select': {
+        'none': 'select-none', 'auto': 'select-auto', 'text': 'select-text', 'all': 'select-all',
+      },
+      '-webkit-user-select': {
+        'none': 'select-none', 'auto': 'select-auto', 'text': 'select-text', 'all': 'select-all',
+      },
       'outline': (v) => {
         const map: Record<string, string> = {
           '0': 'outline-none', 'none': 'outline-none', '1px solid': 'outline', '2px solid': 'outline-2',
@@ -899,7 +905,7 @@ export function cssToTailwind(property: string, value: string): string | null {
       'background-image': (v) => {
         if (v === 'none') return 'bg-none';
         if (v.startsWith('url(')) {
-          const urlMatch = v.match(/^url\((['"]?)(.*)\1\)$/);
+          const urlMatch = v.match(/^url\((['"]?)(.*?)\1\)$/);
           if (urlMatch) {
             const escapedUrl = spacesToUnderscore(urlMatch[2].replace(/\s+/g, '_').replace(/([\[\]'"`\\])/g, '\\$1'));
             return `bg-[url('${escapedUrl}')]`;
@@ -975,6 +981,9 @@ export function cssToTailwind(property: string, value: string): string | null {
       value = value.replace(/\s*!important\s*/g, '').trim();
       importantSetting = '!';
     }
+
+    // Skip empty values — don't produce broken classes like bg-[] or text-[]
+    if (!value || value.trim() === '') return null;
 
     // Handle vendor prefixes (except specific ones handled above)
     if (property !== '-webkit-text-fill-color' && property !== '-webkit-background-clip' &&

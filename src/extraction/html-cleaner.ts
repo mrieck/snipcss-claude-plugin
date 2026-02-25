@@ -81,6 +81,11 @@ export function removeExtraAttributes(
 
   const $ = cheerio.load(html, { xml: { xmlMode: false, decodeEntities: false } }, false);
 
+  // Remove HTML comments
+  $.root().find('*').contents().filter((_i, node) => node.type === 'comment').remove();
+  // Also remove top-level comments
+  $.root().contents().filter((_i, node) => node.type === 'comment').remove();
+
   $.root().find('*').each((_i, elem) => {
     if (elem.type !== 'tag') return;
     const el = elem as any;

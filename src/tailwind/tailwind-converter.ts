@@ -455,7 +455,9 @@ function resolveAllVariables(
         );
       }
     } else {
-      concreteValue = '';
+      // Can't resolve this variable — preserve the original var() reference
+      // instead of producing empty values (e.g., rgba(,_1) from unresolved Bootstrap vars)
+      concreteValue = `var(${varName})`;
     }
 
     // Legacy linear-gradient spacing hack
@@ -731,8 +733,15 @@ export function getTailwindHtml(
       // -----------------------------------------------------------
       // 1) Process style attribute declarations
       // -----------------------------------------------------------
-      const theStyleAttr = $editHtml(theElem).attr('style');
+      let theStyleAttr = $editHtml(theElem).attr('style');
       if (theStyleAttr) {
+        // Decode HTML entities in style values (Cheerio encodes " as &quot; in inline styles)
+        theStyleAttr = theStyleAttr
+          .replace(/&quot;/g, '"')
+          .replace(/&amp;/g, '&')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&#39;/g, "'");
         const declarations = parseStyleAttribute(theStyleAttr);
 
         // First pass: register CSS variable definitions from inline styles

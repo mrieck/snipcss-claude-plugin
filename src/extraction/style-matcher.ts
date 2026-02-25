@@ -192,7 +192,8 @@ export class StyleMatcher {
       seenProps.add(prop.name);
 
       const important = prop.important ? ' !important' : '';
-      bodyParts.push(`${prop.name}: ${prop.value}${important}`);
+      const cleanValue = prop.value.replace(/\s*!important\s*/g, '').trim();
+      bodyParts.push(`${prop.name}: ${cleanValue}${important}`);
     }
 
     if (bodyParts.length === 0) return null;

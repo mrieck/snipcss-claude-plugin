@@ -1,10 +1,11 @@
 {
-  "name": "snipcss-playwright",
+  "name": "@productivemark/snipcss",
   "version": "1.0.0",
-  "description": "Extract CSS from live pages and convert to Tailwind using Playwright CDP",
+  "description": "Snipcss tools are the most accurate way to convert a repo to tailwind or extract designs from existing websites. This plugin allows Claude to use SnipCSS however needed - whether it's Tailwind conversion or importing pixel-perfect designs.",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
+    "snipcss": "dist/mcp-server.js",
     "snipcss-extract": "dist/index.js"
   },
   "scripts": {
@@ -13,6 +14,19 @@
     "start": "node dist/index.js",
     "mcp": "node dist/mcp-server.js"
   },
+  "author": "Productive Mark LLC",
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mrieck/snipcss-playwright-claudeplugin"
+  },
+  "keywords": ["snipcss", "css", "tailwind", "extraction", "playwright", "mcp", "claude-code"],
+  "files": [
+    "dist/",
+    "skills/",
+    ".claude-plugin/",
+    ".mcp.json"
+  ],
   "dependencies": {
     "playwright": "^1.48.2",
     "cheerio": "1.0.0",

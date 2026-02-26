@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "snipcss": {
+      "command": "npx",
+      "args": ["-y", "@productivemark/snipcss"]
+    }
+  }
+}

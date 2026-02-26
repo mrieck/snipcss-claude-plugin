@@ -1,0 +1,17 @@
+{
+  "name": "snipcss",
+  "owner": { "name": "SnipCSS" },
+  "metadata": {
+    "description": "CSS extraction and Tailwind conversion tools for Claude Code"
+  },
+  "plugins": [
+    {
+      "name": "snipcss",
+      "source": {
+        "source": "github",
+        "repo": "mrieck/snipcss-playwright-claudeplugin"
+      },
+      "description": "Convert repos to Tailwind or extract pixel-perfect designs from any website. Gives Claude design super-powers via Playwright and SnipCSS."
+    }
+  ]
+}

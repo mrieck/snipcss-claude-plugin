@@ -18,7 +18,7 @@
   "license": "UNLICENSED",
   "repository": {
     "type": "git",
-    "url": "https://github.com/mrieck/snipcss-playwright-claudeplugin"
+    "url": "https://github.com/mrieck/snipcss-claude-plugin"
   },
   "keywords": ["snipcss", "css", "tailwind", "extraction", "playwright", "mcp", "claude-code"],
   "files": [

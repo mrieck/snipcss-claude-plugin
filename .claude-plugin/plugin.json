@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "author": { "name": "SnipCSS" },
   "homepage": "https://www.snipcss.com",
-  "repository": "https://github.com/mrieck/snipcss-playwright-claudeplugin",
+  "repository": "https://github.com/mrieck/snipcss-claude-plugin",
   "license": "UNLICENSED",
   "keywords": ["css", "tailwind", "extraction", "design"]
 }

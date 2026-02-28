@@ -9,7 +9,7 @@
       "name": "snipcss",
       "source": {
         "source": "github",
-        "repo": "mrieck/snipcss-playwright-claudeplugin"
+        "repo": "mrieck/snipcss-claude-plugin"
       },
       "description": "Convert repos to Tailwind or extract pixel-perfect designs from any website. Gives Claude design super-powers via Playwright and SnipCSS."
     }

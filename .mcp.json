@@ -2,7 +2,7 @@
   "mcpServers": {
     "snipcss": {
       "command": "npm",
-      "args": ["exec", "-y", "--", "@productivemark/snipcss"]
+      "args": ["exec", "-y", "snipcss"]
     }
   }
 }

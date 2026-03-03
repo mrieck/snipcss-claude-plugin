@@ -1,0 +1,14 @@
+node_modules/
+src/
+*.ts
+!*.d.ts
+tsconfig.json
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+.env
+.env.*
+*.html
+test-cdp.js
+nbproject/

@@ -84,7 +84,7 @@ export class ExtractionPipeline {
       const labelResult = await this.domLabeler.labelElements(page, selector);
       ctx.allClassnamesArr = labelResult.allClassnamesArr;
 
-      console.log(`Labeled ${labelResult.allClassnamesArr.length} elements`);
+      console.error(`Labeled ${labelResult.allClassnamesArr.length} elements`);
 
       // STEP 6: Parse fonts and CSS variables from stylesheets
       await this.fontCollector.collectAll(cdp, stylesheets, url, ctx);
@@ -97,7 +97,7 @@ export class ExtractionPipeline {
 
       // STEP 8: For each viewport, extract matched styles
       for (const viewport of viewports) {
-        console.log(`Processing viewport: ${viewport.name} (${viewport.width}x${viewport.height})`);
+        console.error(`Processing viewport: ${viewport.name} (${viewport.width}x${viewport.height})`);
 
         // Set viewport (skip for default)
         if (viewport.name !== 'default') {
@@ -126,7 +126,7 @@ export class ExtractionPipeline {
                 });
 
                 if (!node.nodeId || node.nodeId === 0) {
-                  console.log(`Element not found: .${classname}`);
+                  console.error(`Element not found: .${classname}`);
                   return null;
                 }
 
@@ -215,7 +215,7 @@ export class ExtractionPipeline {
         }
       }
 
-      console.log(`Extracted ${ctx.snippedArr.length} CSS rules`);
+      console.error(`Extracted ${ctx.snippedArr.length} CSS rules`);
 
       // STEP 9: Build final result
       const result = this.resultBuilder.buildResult(ctx, labelResult.allElementOuterHtml, {
@@ -271,6 +271,221 @@ export class ExtractionPipeline {
       return result;
     } finally {
       // Cleanup
+      if (bp) {
+        await this.browserManager.closePage(bp);
+      }
+    }
+  }
+
+  /**
+   * Extract CSS from raw HTML content (e.g. email newsletters).
+   * Uses page.setContent() instead of page.goto(). The extraction
+   * steps after page creation are identical to extract().
+   */
+  async extractFromHtml(
+    html: string,
+    selector: string,
+    options: ExtractionOptions & { baseUrl?: string } = {}
+  ): Promise<ExtractionResult> {
+    const ctx = new ExtractionContext();
+    ctx.siteUrl = options.baseUrl || 'email://local';
+
+    const resolveVariables = options.resolveVariables !== false;
+    const includeHoverStates = options.includeHoverStates !== false;
+    const doRemoveClasses = options.removeUnusedClasses ?? true;
+    const doRemoveAttrs = options.removeUnusedAttributes ?? true;
+    const viewportOption = options.viewport || 'all';
+
+    let bp: BrowserPage | null = null;
+
+    try {
+      // STEP 1: Create page from HTML content (not a URL)
+      bp = await this.browserManager.createPageFromHtml(html, options.baseUrl);
+      const { page, cdp } = bp;
+
+      // STEP 2: Start collecting stylesheets
+      await this.stylesheetCollector.startCollecting(cdp);
+
+      await page.waitForLoadState('networkidle');
+
+      // STEP 3: Get DOM document
+      const doc = await cdp.send('DOM.getDocument');
+      const docRootNodeId = doc.root.nodeId;
+
+      // STEP 4: Stop collecting and get stylesheets
+      const stylesheets = this.stylesheetCollector.stopCollecting();
+      ctx.stylesheetArr = stylesheets;
+
+      // STEP 5: Label elements in the DOM
+      const labelResult = await this.domLabeler.labelElements(page, selector);
+      ctx.allClassnamesArr = labelResult.allClassnamesArr;
+
+      console.error(`Labeled ${labelResult.allClassnamesArr.length} elements`);
+
+      // STEP 6: Parse fonts and CSS variables from stylesheets
+      await this.fontCollector.collectAll(cdp, stylesheets, ctx.siteUrl, ctx);
+
+      // STEP 7: Determine viewports to process
+      const viewports = this.viewportManager.getViewportsForOption(
+        viewportOption,
+        options.customWidth
+      );
+
+      // STEP 8: For each viewport, extract matched styles
+      for (const viewport of viewports) {
+        console.error(`Processing viewport: ${viewport.name} (${viewport.width}x${viewport.height})`);
+
+        if (viewport.name !== 'default') {
+          await this.viewportManager.setViewport(cdp, viewport);
+          await page.waitForTimeout(500);
+        }
+
+        const vpDoc = await cdp.send('DOM.getDocument');
+
+        for (let i = 0; i < ctx.allClassnamesArr.length; i += BATCH_SIZE) {
+          const batch = ctx.allClassnamesArr.slice(i, i + BATCH_SIZE);
+
+          const batchResults = await Promise.all(
+            batch.map(async (classname) => {
+              try {
+                const node = await cdp.send('DOM.querySelector', {
+                  nodeId: vpDoc.root.nodeId,
+                  selector: '.' + classname,
+                });
+
+                if (!node.nodeId || node.nodeId === 0) {
+                  console.error(`Element not found: .${classname}`);
+                  return null;
+                }
+
+                const allMatchedStyles = await this.styleMatcher.getMatchedStyles(
+                  cdp, node.nodeId
+                );
+
+                return { classname, nodeId: node.nodeId, allMatchedStyles };
+              } catch (e) {
+                console.error(`Error matching styles for .${classname}:`, e);
+                return null;
+              }
+            })
+          );
+
+          for (const result of batchResults) {
+            if (!result) continue;
+            const { classname, nodeId, allMatchedStyles } = result;
+
+            const matchedRules = this.styleMatcher.processMatchedStyles(
+              allMatchedStyles,
+              classname,
+              ctx,
+              { resolveVariables, mediaQueriesOnly: viewport.name !== 'default' && viewport.name.startsWith('custom') }
+            );
+
+            this.styleMatcher.extractCssVariables(matchedRules, classname, ctx);
+            this.keyframeCollector.collect(allMatchedStyles, ctx);
+
+            for (const ruleMatch of matchedRules) {
+              const snippedRule = this.styleMatcher.toSnippedRule(
+                ruleMatch, classname, viewport.name, ctx
+              );
+              if (snippedRule) {
+                this.ruleDeduplicator.addRule(snippedRule, ctx);
+              }
+            }
+          }
+
+          if (includeHoverStates) {
+            for (const result of batchResults) {
+              if (!result) continue;
+              const { classname, nodeId } = result;
+
+              const hoverRules = await this.pseudoStateHandler.extractHoverStyles(
+                cdp, page, nodeId, classname, vpDoc.root.nodeId
+              );
+              for (const ruleMatch of hoverRules) {
+                const snippedRule = this.styleMatcher.toSnippedRule(
+                  ruleMatch, classname, viewport.name, ctx
+                );
+                if (snippedRule) {
+                  snippedRule.is_hover = true;
+                  this.ruleDeduplicator.addRule(snippedRule, ctx);
+                }
+              }
+
+              const checkedRules = await this.pseudoStateHandler.extractCheckedStyles(
+                cdp, page, nodeId, classname, vpDoc.root.nodeId
+              );
+              for (const ruleMatch of checkedRules) {
+                const snippedRule = this.styleMatcher.toSnippedRule(
+                  ruleMatch, classname, viewport.name, ctx
+                );
+                if (snippedRule) {
+                  this.ruleDeduplicator.addRule(snippedRule, ctx);
+                }
+              }
+            }
+          }
+        }
+
+        if (viewport.name !== 'default') {
+          await this.viewportManager.clearViewport(cdp);
+        }
+      }
+
+      console.error(`Extracted ${ctx.snippedArr.length} CSS rules`);
+
+      // STEP 9: Build final result
+      const result = this.resultBuilder.buildResult(ctx, labelResult.allElementOuterHtml, {
+        resolveVariables,
+      });
+
+      // STEP 10: Tailwind conversion
+      try {
+        const labeledHtml = labelResult.allElementOuterHtml;
+        result.tailwindHtml = getTailwindHtml(
+          labeledHtml,
+          result.css,
+          ctx.snippedArr,
+          false,
+          resolveVariables,
+          ctx
+        );
+        result.tailwindBodyClasses = getTailwindBodyClasses(
+          ctx.snippedArr,
+          false,
+          resolveVariables,
+          [],
+          ctx
+        );
+      } catch (e) {
+        console.error('Tailwind conversion error:', e);
+      }
+
+      // STEP 11: Get clean HTML (without marker classes)
+      result.html = await this.domLabeler.getCleanHtml(page, selector);
+
+      // STEP 12: Remove unused attributes and classes from HTML
+      if (doRemoveClasses || doRemoveAttrs) {
+        const cleanOpts = {
+          removeUnusedClasses: doRemoveClasses,
+          removeUnusedAttributes: doRemoveAttrs,
+          keepTailwindLabels: false,
+        };
+        result.html = removeExtraAttributes(result.html, ctx.snippedArr, cleanOpts);
+        if (result.tailwindHtml) {
+          result.tailwindHtml = removeExtraAttributes(
+            result.tailwindHtml,
+            ctx.snippedArr,
+            { ...cleanOpts, keepTailwindLabels: true }
+          );
+        }
+      }
+
+      // STEP 13: Remove labels from DOM
+      await this.domLabeler.removeLabels(page);
+
+      return result;
+    } finally {
       if (bp) {
         await this.browserManager.closePage(bp);
       }

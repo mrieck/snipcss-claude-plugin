@@ -19,6 +19,19 @@ npm run mcp            # node dist/mcp-server.js (MCP server on stdio)
 
 No test framework is configured. Use the Claude Code skills (`/build-check`, `/test-extract`, `/test-mcp`, `/test-compare`) for validation.
 
+## MCP Timeout Guidance
+
+Long extractions (especially `viewport: "all"` on complex pages) can exceed default MCP tool timeouts in some clients.
+
+For Codex CLI, set a higher timeout in `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.snipcss]
+command = "npx"
+args = ["-y", "@productivemark/snipcss"]
+tool_timeout_sec = 120
+```
+
 ## CLI Usage
 
 ```bash

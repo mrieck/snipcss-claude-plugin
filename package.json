@@ -1,6 +1,6 @@
 {
   "name": "@productivemark/snipcss",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Snipcss tools are the most accurate way to convert a repo to tailwind or extract designs from existing websites. This plugin allows Claude to use SnipCSS however needed - whether it's Tailwind conversion or importing pixel-perfect designs.",
   "type": "module",
   "main": "dist/index.js",
@@ -20,7 +20,15 @@
     "type": "git",
     "url": "https://github.com/mrieck/snipcss-claude-plugin"
   },
-  "keywords": ["snipcss", "css", "tailwind", "extraction", "playwright", "mcp", "claude-code"],
+  "keywords": [
+    "snipcss",
+    "css",
+    "tailwind",
+    "extraction",
+    "playwright",
+    "mcp",
+    "claude-code"
+  ],
   "files": [
     "dist/",
     "skills/",
@@ -28,14 +36,17 @@
     ".mcp.json"
   ],
   "dependencies": {
-    "playwright": "^1.48.2",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@types/mailparser": "^3.4.6",
     "cheerio": "1.0.0",
-    "yargs": "^17.7.2",
-    "@modelcontextprotocol/sdk": "^1.0.0"
+    "imapflow": "^1.2.11",
+    "mailparser": "^3.9.3",
+    "playwright": "^1.48.2",
+    "yargs": "^17.7.2"
   },
   "devDependencies": {
-    "typescript": "^5.3.0",
     "@types/node": "^20.10.0",
-    "@types/yargs": "^17.0.32"
+    "@types/yargs": "^17.0.32",
+    "typescript": "^5.3.0"
   }
 }

@@ -16,19 +16,20 @@ import {
   removeLabelOverlay,
   formatElementLegend,
 } from './extraction/element-discovery.js';
-import {
-  getAccount,
-  setAccount,
-  getProviderPreset,
-  listAccounts,
-  ImapCredentials,
-} from './email/credential-manager.js';
-import {
-  testConnection,
-  searchEmails,
-  getEmailHtml,
-} from './email/imap-client.js';
-import { preprocessEmailHtml, extractBaseUrl } from './email/email-html-preprocessor.js';
+// Email tools disabled — uncomment when ready to test
+// import {
+//   getAccount,
+//   setAccount,
+//   getProviderPreset,
+//   listAccounts,
+//   ImapCredentials,
+// } from './email/credential-manager.js';
+// import {
+//   testConnection,
+//   searchEmails,
+//   getEmailHtml,
+// } from './email/imap-client.js';
+// import { preprocessEmailHtml, extractBaseUrl } from './email/email-html-preprocessor.js';
 
 const browserManager = new BrowserManager();
 let pipeline: ExtractionPipeline;
@@ -108,31 +109,32 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: 'list_page_elements',
       description:
-        'Navigate to a URL (or load an email by UID) and list the major page elements with their CSS selectors, semantic types, ' +
+        'Navigate to a URL and list the major page elements with their CSS selectors, semantic types, ' +
         'hierarchy context, and visual properties. Scans 2-3 levels deep to find cards, widgets, and forms. ' +
-        'Useful for discovering which elements to extract before calling extract_css_convert_tailwind or extract_email_design.',
+        'Useful for discovering which elements to extract before calling extract_css_convert_tailwind.',
       inputSchema: {
         type: 'object' as const,
         properties: {
           url: {
             type: 'string',
-            description: 'The URL of the page to analyze (provide this OR emailUid, not both)',
+            description: 'The URL of the page to analyze',
           },
-          emailUid: {
-            type: 'number',
-            description: 'Email UID to load and analyze (alternative to url). Use search_emails to find UIDs.',
-          },
-          account: {
-            type: 'string',
-            description: 'Email account label (if using emailUid with multiple configured accounts)',
-          },
+          // emailUid: {
+          //   type: 'number',
+          //   description: 'Email UID to load and analyze (alternative to url). Use search_emails to find UIDs.',
+          // },
+          // account: {
+          //   type: 'string',
+          //   description: 'Email account label (if using emailUid with multiple configured accounts)',
+          // },
         },
+        required: ['url'],
       },
     },
     {
       name: 'screenshot_page',
       description:
-        'Take an annotated screenshot of a webpage (or email) with numbered labels (#1, #2, #3...) overlaid on ' +
+        'Take an annotated screenshot of a webpage with numbered labels (#1, #2, #3...) overlaid on ' +
         'discovered elements. Returns the screenshot image plus a legend mapping each number to its ' +
         'CSS selector, semantic type, size, and content preview. Use this to visually identify which ' +
         'element a user is describing (e.g., "the sidebar", "the pricing card") before extracting it.',
@@ -141,16 +143,16 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         properties: {
           url: {
             type: 'string',
-            description: 'The URL of the page to screenshot (provide this OR emailUid, not both)',
+            description: 'The URL of the page to screenshot',
           },
-          emailUid: {
-            type: 'number',
-            description: 'Email UID to load and screenshot (alternative to url). Use search_emails to find UIDs.',
-          },
-          account: {
-            type: 'string',
-            description: 'Email account label (if using emailUid with multiple configured accounts)',
-          },
+          // emailUid: {
+          //   type: 'number',
+          //   description: 'Email UID to load and screenshot (alternative to url). Use search_emails to find UIDs.',
+          // },
+          // account: {
+          //   type: 'string',
+          //   description: 'Email account label (if using emailUid with multiple configured accounts)',
+          // },
           viewport: {
             type: 'string',
             enum: ['desktop', 'tablet', 'mobile'],
@@ -160,132 +162,19 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         },
       },
     },
-    {
-      name: 'configure_email',
-      description:
-        'Configure an email account for newsletter extraction via IMAP. ' +
-        'Supports Gmail (use App Password from myaccount.google.com/apppasswords), ' +
-        'Outlook, Yahoo, iCloud, and any IMAP-compatible provider. ' +
-        'Credentials are stored locally in ~/.snipcss/email.json.',
-      inputSchema: {
-        type: 'object' as const,
-        properties: {
-          provider: {
-            type: 'string',
-            enum: ['gmail', 'outlook', 'yahoo', 'icloud', 'custom'],
-            description: 'Email provider preset. Sets host/port automatically. Use "custom" for other providers.',
-          },
-          host: {
-            type: 'string',
-            description: 'IMAP server hostname (required if provider is "custom")',
-          },
-          port: {
-            type: 'number',
-            default: 993,
-            description: 'IMAP port (993 for TLS)',
-          },
-          user: {
-            type: 'string',
-            description: 'Email address / username',
-          },
-          password: {
-            type: 'string',
-            description: 'Password or app-specific password (for Gmail, use an App Password)',
-          },
-          label: {
-            type: 'string',
-            default: 'default',
-            description: 'Account label for managing multiple accounts',
-          },
-        },
-        required: ['user', 'password'],
-      },
-    },
-    {
-      name: 'search_emails',
-      description:
-        'Search your email inbox for newsletters or specific emails. ' +
-        'Returns a list of matching emails with subject, sender, date, and UID. ' +
-        'Use the UID with extract_email_design, list_page_elements, or screenshot_page.',
-      inputSchema: {
-        type: 'object' as const,
-        properties: {
-          from: {
-            type: 'string',
-            description: 'Filter by sender email or name (e.g., "newsletter@metv.com", "MeTV")',
-          },
-          subject: {
-            type: 'string',
-            description: 'Filter by subject keywords',
-          },
-          since: {
-            type: 'string',
-            description: 'Only emails after this date (ISO 8601, e.g., "2026-02-01")',
-          },
-          mailbox: {
-            type: 'string',
-            default: 'INBOX',
-            description: 'Mailbox/folder to search',
-          },
-          limit: {
-            type: 'number',
-            default: 10,
-            description: 'Max results to return (newest first)',
-          },
-          account: {
-            type: 'string',
-            description: 'Account label (if multiple configured)',
-          },
-        },
-      },
-    },
-    {
-      name: 'extract_email_design',
-      description:
-        'Extract CSS/design from an email newsletter and convert to Tailwind. ' +
-        'Fetches the email HTML via IMAP, loads it in a browser, and runs the full extraction pipeline. ' +
-        'Use search_emails first to find the email UID.',
-      inputSchema: {
-        type: 'object' as const,
-        properties: {
-          uid: {
-            type: 'number',
-            description: 'Email UID from search_emails results',
-          },
-          selector: {
-            type: 'string',
-            default: 'body',
-            description: 'CSS selector for the element to extract (default: entire email body). Use list_page_elements with emailUid to discover selectors.',
-          },
-          mailbox: {
-            type: 'string',
-            default: 'INBOX',
-            description: 'Mailbox/folder the email is in',
-          },
-          account: {
-            type: 'string',
-            description: 'Account label (if multiple configured)',
-          },
-          viewport: {
-            type: 'string',
-            enum: ['all', 'desktop', 'tablet', 'mobile'],
-            default: 'desktop',
-            description: 'Viewport(s) to extract CSS for',
-          },
-          resolveVariables: {
-            type: 'boolean',
-            default: true,
-            description: 'Whether to resolve CSS custom properties',
-          },
-          includeHoverStates: {
-            type: 'boolean',
-            default: false,
-            description: 'Whether to extract hover/focus states (usually not relevant for emails)',
-          },
-        },
-        required: ['uid'],
-      },
-    },
+    // Email tools disabled — uncomment when ready to test
+    // {
+    //   name: 'configure_email',
+    //   ...
+    // },
+    // {
+    //   name: 'search_emails',
+    //   ...
+    // },
+    // {
+    //   name: 'extract_email_design',
+    //   ...
+    // },
   ],
 }));
 
@@ -382,188 +271,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
   }
 
-  if (name === 'configure_email') {
-    try {
-      const provider = args?.provider as string | undefined;
-      let host = args?.host as string | undefined;
-      let port = (args?.port as number) || 993;
-      let secure = true;
-      const user = args!.user as string;
-      const password = args!.password as string;
-      const label = (args?.label as string) || 'default';
-
-      // Apply provider preset if specified
-      if (provider && provider !== 'custom') {
-        const preset = getProviderPreset(provider);
-        if (preset) {
-          host = host || preset.host;
-          port = preset.port;
-          secure = preset.secure;
-        }
-      }
-
-      if (!host) {
-        return {
-          content: [{
-            type: 'text',
-            text: 'Error: host is required. Either specify a provider (gmail, outlook, yahoo, icloud) or provide host directly.',
-          }],
-          isError: true,
-        };
-      }
-
-      const creds: ImapCredentials = { host, port, user, password, secure };
-
-      // Test the connection before saving
-      const result = await testConnection(creds);
-      if (!result.success) {
-        let hint = '';
-        if (provider === 'gmail') {
-          hint = '\n\nFor Gmail, make sure you are using an App Password (not your regular password). ' +
-            'Generate one at: https://myaccount.google.com/apppasswords';
-        }
-        return {
-          content: [{
-            type: 'text',
-            text: `Connection failed: ${result.error}${hint}`,
-          }],
-          isError: true,
-        };
-      }
-
-      setAccount(label, creds);
-
-      let response = `Email account "${label}" configured successfully (${user} via ${host}:${port}).`;
-      if (provider === 'gmail') {
-        response += '\n\nGmail connected via App Password.';
-      }
-      response += '\n\nYou can now use search_emails to find newsletters.';
-
-      return { content: [{ type: 'text', text: response }] };
-    } catch (error: any) {
-      return {
-        content: [{ type: 'text', text: `Error configuring email: ${error.message}` }],
-        isError: true,
-      };
-    }
-  }
-
-  if (name === 'search_emails') {
-    try {
-      const accountLabel = args?.account as string | undefined;
-      const creds = getAccount(accountLabel);
-      if (!creds) {
-        const accounts = listAccounts();
-        const hint = accounts.length > 0
-          ? `Available accounts: ${accounts.join(', ')}`
-          : 'Use configure_email to set up an email account first.';
-        return {
-          content: [{ type: 'text', text: `No email account configured.${accountLabel ? ` Account "${accountLabel}" not found.` : ''} ${hint}` }],
-          isError: true,
-        };
-      }
-
-      const results = await searchEmails(creds, {
-        from: args?.from as string | undefined,
-        subject: args?.subject as string | undefined,
-        since: args?.since as string | undefined,
-        mailbox: args?.mailbox as string | undefined,
-        limit: args?.limit as number | undefined,
-      });
-
-      if (results.length === 0) {
-        return {
-          content: [{ type: 'text', text: 'No emails found matching your search criteria.' }],
-        };
-      }
-
-      let output = `## Email Search Results\n\nFound ${results.length} email(s):\n\n`;
-      output += `| # | UID | From | Subject | Date | HTML? |\n`;
-      output += `|---|-----|------|---------|------|-------|\n`;
-
-      for (let i = 0; i < results.length; i++) {
-        const e = results[i];
-        const from = e.from.replace(/\|/g, '\\|');
-        const subject = e.subject.replace(/\|/g, '\\|').substring(0, 60);
-        const date = e.date !== 'unknown' ? new Date(e.date).toLocaleDateString() : 'unknown';
-        output += `| ${i + 1} | ${e.uid} | ${from} | ${subject} | ${date} | ${e.hasHtml ? 'Yes' : 'No'} |\n`;
-      }
-
-      output += `\n_Use the UID with extract_email_design to extract CSS, or with list_page_elements/screenshot_page (emailUid param) to preview._`;
-
-      return { content: [{ type: 'text', text: output }] };
-    } catch (error: any) {
-      return {
-        content: [{ type: 'text', text: `Error searching emails: ${error.message}` }],
-        isError: true,
-      };
-    }
-  }
-
-  if (name === 'extract_email_design') {
-    try {
-      // Check usage/Pro access
-      const access = await checkAccess();
-      if (!access.allowed) {
-        return {
-          content: [{
-            type: 'text',
-            text: access.message || 'Access denied. Please set your API key with the set_api_key tool.',
-          }],
-          isError: true,
-        };
-      }
-
-      const uid = args!.uid as number;
-      const selector = (args?.selector as string) || 'body';
-      const mailbox = args?.mailbox as string | undefined;
-      const accountLabel = args?.account as string | undefined;
-
-      const creds = getAccount(accountLabel);
-      if (!creds) {
-        return {
-          content: [{ type: 'text', text: 'No email account configured. Use configure_email first.' }],
-          isError: true,
-        };
-      }
-
-      // Fetch email HTML
-      const email = await getEmailHtml(creds, uid, mailbox);
-      const baseUrl = extractBaseUrl(email.html);
-      const processedHtml = preprocessEmailHtml(email.html);
-
-      // Run extraction pipeline on the email HTML
-      if (!pipeline) {
-        await browserManager.launch();
-        pipeline = new ExtractionPipeline(browserManager);
-      }
-
-      const options: ExtractionOptions = {
-        viewport: (args?.viewport as string) || 'desktop',
-        resolveVariables: args?.resolveVariables !== false,
-        includeHoverStates: args?.includeHoverStates === true, // default false for emails
-      };
-
-      const result = await pipeline.extractFromHtml(processedHtml, selector, {
-        ...options,
-        baseUrl,
-      });
-
-      const source = `email "${email.subject}" from ${email.from}`;
-      let output = formatExtractionResult(result, source, selector);
-
-      if (access.message) {
-        output += `\n\n---\n_${access.message}_`;
-      }
-
-      return { content: [{ type: 'text', text: output }] };
-    } catch (error: any) {
-      return {
-        content: [{ type: 'text', text: `Error extracting email design: ${error.message}` }],
-        isError: true,
-      };
-    }
-  }
+  // Email tool handlers disabled — uncomment when ready to test
+  // if (name === 'configure_email') { ... }
+  // if (name === 'search_emails') { ... }
+  // if (name === 'extract_email_design') { ... }
 
   if (name === 'list_page_elements') {
     try {
@@ -572,26 +283,27 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       let bp;
       let sourceLabel: string;
 
-      if (args?.emailUid) {
-        // Email mode: load email HTML into browser
-        const creds = getAccount(args?.account as string | undefined);
-        if (!creds) {
-          return {
-            content: [{ type: 'text', text: 'No email account configured. Use configure_email first.' }],
-            isError: true,
-          };
-        }
-        const email = await getEmailHtml(creds, args.emailUid as number);
-        const processedHtml = preprocessEmailHtml(email.html);
-        const baseUrl = extractBaseUrl(email.html);
-        bp = await browserManager.createPageFromHtml(processedHtml, baseUrl);
-        sourceLabel = `email "${email.subject}" (UID: ${args.emailUid})`;
-      } else if (args?.url) {
+      // Email mode disabled — uncomment when ready to test
+      // if (args?.emailUid) {
+      //   const creds = getAccount(args?.account as string | undefined);
+      //   if (!creds) {
+      //     return {
+      //       content: [{ type: 'text', text: 'No email account configured. Use configure_email first.' }],
+      //       isError: true,
+      //     };
+      //   }
+      //   const email = await getEmailHtml(creds, args.emailUid as number);
+      //   const processedHtml = preprocessEmailHtml(email.html);
+      //   const baseUrl = extractBaseUrl(email.html);
+      //   bp = await browserManager.createPageFromHtml(processedHtml, baseUrl);
+      //   sourceLabel = `email "${email.subject}" (UID: ${args.emailUid})`;
+      // } else
+      if (args?.url) {
         bp = await browserManager.createPage(args.url as string);
         sourceLabel = args.url as string;
       } else {
         return {
-          content: [{ type: 'text', text: 'Either url or emailUid is required.' }],
+          content: [{ type: 'text', text: 'url is required.' }],
           isError: true,
         };
       }
@@ -643,26 +355,27 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       let bp;
       let pageTitle: string;
 
-      if (args?.emailUid) {
-        // Email mode: load email HTML into browser
-        const creds = getAccount(args?.account as string | undefined);
-        if (!creds) {
-          return {
-            content: [{ type: 'text', text: 'No email account configured. Use configure_email first.' }],
-            isError: true,
-          };
-        }
-        const email = await getEmailHtml(creds, args.emailUid as number);
-        const processedHtml = preprocessEmailHtml(email.html);
-        const baseUrl = extractBaseUrl(email.html);
-        bp = await browserManager.createPageFromHtml(processedHtml, baseUrl);
-        pageTitle = `email "${email.subject}" (UID: ${args.emailUid})`;
-      } else if (args?.url) {
+      // Email mode disabled — uncomment when ready to test
+      // if (args?.emailUid) {
+      //   const creds = getAccount(args?.account as string | undefined);
+      //   if (!creds) {
+      //     return {
+      //       content: [{ type: 'text', text: 'No email account configured. Use configure_email first.' }],
+      //       isError: true,
+      //     };
+      //   }
+      //   const email = await getEmailHtml(creds, args.emailUid as number);
+      //   const processedHtml = preprocessEmailHtml(email.html);
+      //   const baseUrl = extractBaseUrl(email.html);
+      //   bp = await browserManager.createPageFromHtml(processedHtml, baseUrl);
+      //   pageTitle = `email "${email.subject}" (UID: ${args.emailUid})`;
+      // } else
+      if (args?.url) {
         bp = await browserManager.createPage(args.url as string);
         pageTitle = args.url as string;
       } else {
         return {
-          content: [{ type: 'text', text: 'Either url or emailUid is required.' }],
+          content: [{ type: 'text', text: 'url is required.' }],
           isError: true,
         };
       }

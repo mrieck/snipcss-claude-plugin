@@ -4,17 +4,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-snipcss-playwright is a Playwright CDP-based CSS extraction tool that captures CSS from live webpages and converts to Tailwind CSS. It's a modernized port of the SnipCSS browser extension (`/Users/markr/Sites/snipcss/snip-extension`). Two entry points: a CLI (`src/index.ts`) and an MCP server (`src/mcp-server.ts`).
+This repo contains two things sharing one CSS extraction engine:
 
-The long-term goal is to package this as a **Claude Code plugin** with an MCP server + skill, distributed via the Anthropic plugin marketplace. The plugin will include a soft usage counter (10 free extractions, then prompt for Pro email stored in `~/.snipcss/config.json`).
+1. **Claude MCP Plugin** (`src/`) — Playwright CDP-based CSS extraction tool that captures CSS from live webpages and converts to Tailwind CSS. Exposed as a Claude Code plugin with an MCP server + skill. Two entry points: a CLI (`src/index.ts`) and an MCP server (`src/mcp-server.ts`). Soft usage counter (10 free extractions, then Pro API key stored in `~/.snipcss/config.json`).
+
+2. **Apify Actor** (`actor/`) — Apify platform actor that extracts HTML/CSS from page sections, uploads screenshots to S3, and saves previews to snipcss.com. Uses the same extraction engine as the plugin (no Chrome extension). Entry point: `actor/src/main.ts` → compiled to `actor/dist/actor/src/main.js`.
 
 ## Build & Dev Commands
 
 ```bash
-npm run build          # tsc — compile to dist/
+# Plugin (MCP server + CLI)
+npm run build          # tsc — compile src/ to dist/
 npm run dev            # tsc --watch
 npm run start          # node dist/index.js (CLI)
 npm run mcp            # node dist/mcp-server.js (MCP server on stdio)
+
+# Apify Actor
+npm run build:actor    # tsc -p actor/tsconfig.json — compile to actor/dist/
+npm run actor          # node actor/dist/actor/src/main.js (local test)
+
+# Apify deploy (run from repo root first, then push)
+# npm run build:actor && cd actor && apify push
 ```
 
 No test framework is configured. Use the Claude Code skills (`/build-check`, `/test-extract`, `/test-mcp`, `/test-compare`) for validation.
@@ -93,6 +103,21 @@ Exposes two tools over stdio JSON-RPC:
 - `keyframe-collector.ts` — Collects `@keyframes` animations
 - `html-cleaner.ts` — Strips unused classes/attributes, preserves icon font classes (fa-, bi-, ti-, material-icons, etc.)
 - `specificity.ts` + `utils/parsel.ts` — CSS specificity scoring
+
+## Apify Actor (`actor/`)
+
+The actor shares the plugin's extraction engine. It adds Apify-specific concerns on top:
+
+- **Entry**: `actor/src/main.ts` → imports `BrowserManager`, `ExtractionPipeline`, `discoverElements` from `../../src/`
+- **Auto-segment**: `discoverElements(page)` replaces the old Chrome extension's `segment_page_result` message
+- **CSS extraction**: `pipeline.extract(url, selector, options)` replaces the old extension-based polling loop
+- **Screenshots**: Three-viewport capture (desktop 1366×768, mobile 320×568, iPad 768×1024) using Jimp for cropping, uploaded to AWS S3
+- **Billing**: `Actor.charge({ eventName: 'SEGMENT_EXTRACTED', count: 1 })` per extracted segment
+- **Previews**: `saveSnippetPreview()` → snipcss.com API → preview link in dataset output
+
+**Build system**: `actor/tsconfig.json` compiles both `actor/src/` and `../src/` together into `actor/dist/`. TypeScript `paths` override forces playwright to resolve from root `node_modules/` to avoid type conflicts with actor's own `node_modules/`.
+
+**Apify deploy**: Pre-compile locally (`npm run build:actor`), then `cd actor && apify push`. The Dockerfile copies pre-built `dist/` — no TypeScript compilation inside Docker.
 
 ## Key Design Decisions
 

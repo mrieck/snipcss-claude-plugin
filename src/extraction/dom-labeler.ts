@@ -1,4 +1,4 @@
-import { Page } from 'playwright';
+import { Page } from 'patchright';
 import { LabelResult } from '../types/index.js';
 import { randomLetters } from '../utils/helpers.js';
 

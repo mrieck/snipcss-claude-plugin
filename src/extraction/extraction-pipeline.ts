@@ -1,4 +1,4 @@
-import { CDPSession, Page } from 'playwright';
+import { CDPSession, Page } from 'patchright';
 import {
   ExtractionContext, ExtractionOptions, ExtractionResult,
   CDPMatchedStyles, ViewportConfig,

@@ -1,4 +1,4 @@
-import { Page } from 'playwright';
+import { Page } from 'patchright';
 
 /**
  * Discovered element with semantic information for agent-driven extraction.

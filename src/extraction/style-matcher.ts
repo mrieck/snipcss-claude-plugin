@@ -1,4 +1,4 @@
-import { CDPSession } from 'playwright';
+import { CDPSession } from 'patchright';
 import {
   CDPMatchedStyles, CDPRuleMatch, CDPCSSProperty, CDPCSSRule,
   SnippedRule, ExtractionContext, CssVarDefinition,

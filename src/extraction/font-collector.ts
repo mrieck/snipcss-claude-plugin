@@ -1,4 +1,4 @@
-import { CDPSession } from 'playwright';
+import { CDPSession } from 'patchright';
 import { FontData, StylesheetInfo, ExtractionContext, CssVarDefinition } from '../types/index.js';
 import { resolveUrl } from '../utils/helpers.js';
 

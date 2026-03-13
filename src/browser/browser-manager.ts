@@ -1,10 +1,41 @@
-import { chromium, Browser, Page, BrowserContext, CDPSession } from 'playwright';
+import { chromium, Browser, Page, BrowserContext, CDPSession } from 'patchright';
 
 export interface BrowserPage {
   page: Page;
   cdp: CDPSession;
   context: BrowserContext;
 }
+
+const STEALTH_INIT_SCRIPT = () => {
+  // Hide webdriver property
+  Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+
+  // Fake plugins array (headless has empty array which is suspicious)
+  Object.defineProperty(navigator, 'plugins', {
+    get: () => {
+      const plugins = [
+        { name: 'Chrome PDF Plugin', filename: 'internal-pdf-viewer', description: 'Portable Document Format' },
+        { name: 'Chrome PDF Viewer', filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai', description: '' },
+        { name: 'Native Client', filename: 'internal-nacl-plugin', description: '' },
+      ];
+      plugins.length = 3;
+      return plugins;
+    },
+  });
+
+  // Fake languages
+  Object.defineProperty(navigator, 'languages', {
+    get: () => ['en-US', 'en'],
+  });
+
+  // Chrome runtime object (missing in automation)
+  if (!(window as any).chrome) {
+    (window as any).chrome = {};
+  }
+  (window as any).chrome.runtime = {};
+};
+
+const REALISTIC_USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
 export class BrowserManager {
   private browser: Browser | null = null;
@@ -14,11 +45,13 @@ export class BrowserManager {
 
     this.browser = await chromium.launch({
       headless: true,
+      channel: 'chrome',
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
         '--disable-gpu',
+        '--disable-blink-features=AutomationControlled',
       ],
     });
 
@@ -33,7 +66,10 @@ export class BrowserManager {
     const context = await this.browser!.newContext({
       viewport: { width: 1366, height: 768 },
       ignoreHTTPSErrors: true,
+      userAgent: REALISTIC_USER_AGENT,
     });
+
+    await context.addInitScript(STEALTH_INIT_SCRIPT);
 
     const page = await context.newPage();
 
@@ -63,8 +99,11 @@ export class BrowserManager {
     const context = await this.browser!.newContext({
       viewport: { width: 1366, height: 768 },
       ignoreHTTPSErrors: true,
+      userAgent: REALISTIC_USER_AGENT,
       ...(baseUrl ? { baseURL: baseUrl } : {}),
     });
+
+    await context.addInitScript(STEALTH_INIT_SCRIPT);
 
     const page = await context.newPage();
 

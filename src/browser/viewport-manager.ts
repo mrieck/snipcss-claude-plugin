@@ -1,4 +1,4 @@
-import { CDPSession } from 'playwright';
+import { CDPSession } from 'patchright';
 import { ViewportConfig, DEFAULT_VIEWPORTS } from '../types/index.js';
 
 export class ViewportManager {

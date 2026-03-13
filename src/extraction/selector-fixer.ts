@@ -1,4 +1,4 @@
-import { Page } from 'playwright';
+import { Page } from 'patchright';
 import { ExtractionContext } from '../types/index.js';
 
 /**

@@ -1,4 +1,4 @@
-import { CDPSession } from 'playwright';
+import { CDPSession } from 'patchright';
 import { StylesheetInfo, CDPStylesheet } from '../types/index.js';
 
 /**

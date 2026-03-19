@@ -102,11 +102,25 @@ export class ResultBuilder {
       finalCss = this.variableResolver.resolveVarReferences(finalCss, ctx);
     }
 
+    // Build tailwindCss: @font-face + @keyframes needed for Tailwind HTML to render correctly
+    const tailwindCssLines: string[] = [];
+    for (const font of ctx.customfontsArr) {
+      if (usedFontFamilies.has(font.font_family.toLowerCase()) && font.full_rule) {
+        tailwindCssLines.push(font.full_rule);
+      }
+    }
+    const keyframesCssForTailwind = this.keyframeCollector.generateCss(ctx);
+    if (keyframesCssForTailwind) {
+      tailwindCssLines.push(keyframesCssForTailwind);
+    }
+    const tailwindCss = tailwindCssLines.join('\n');
+
     return {
       html: cleanHtml,
       css: finalCss,
       tailwindHtml: '', // Filled in by tailwind converter later
       tailwindBodyClasses: '',
+      tailwindCss,
       fonts: ctx.customfontsArr.filter(f =>
         usedFontFamilies.has(f.font_family.toLowerCase())
       ),

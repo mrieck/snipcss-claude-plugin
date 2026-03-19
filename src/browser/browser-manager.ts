@@ -82,13 +82,18 @@ export class BrowserManager {
     await cdp.send('Network.enable');
     await cdp.send('Runtime.enable');
 
-    // Navigate to URL
-    await page.goto(url, {
+    // NOTE: Navigation is intentionally NOT done here so the caller can attach
+    // CSS.styleSheetAdded listeners before the page loads (to capture all stylesheets).
+    // Call navigatePage() after attaching listeners.
+
+    return { page, cdp, context };
+  }
+
+  async navigatePage(bp: BrowserPage, url: string, timeout = 30000): Promise<void> {
+    await bp.page.goto(url, {
       waitUntil: 'networkidle',
       timeout,
     });
-
-    return { page, cdp, context };
   }
 
   async createPageFromHtml(html: string, baseUrl?: string, timeout = 30000): Promise<BrowserPage> {

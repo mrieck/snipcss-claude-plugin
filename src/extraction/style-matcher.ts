@@ -179,7 +179,7 @@ export class StyleMatcher {
     // CDP returns both shorthand and longhand versions. We want only the
     // explicitly-written properties (those that have 'text' set or aren't implicit).
     const bodyParts: string[] = [];
-    const seenProps = new Set<string>();
+    const seenProps = new Map<string, number>(); // name -> index in bodyParts
     for (const prop of cssProperties) {
       if (!prop.name || !prop.value) continue;
       if (prop.disabled) continue;
@@ -187,18 +187,42 @@ export class StyleMatcher {
       // Skip implicit longhand expansions - only keep explicitly defined properties.
       // Implicit means CDP auto-expanded a shorthand; we want the shorthand only.
       if (!('implicit' in prop) && !prop.text && prop.range === undefined) continue;
-      // Deduplicate properties
-      if (seenProps.has(prop.name)) continue;
-      seenProps.add(prop.name);
 
       const important = prop.important ? ' !important' : '';
       const cleanValue = prop.value.replace(/\s*!important\s*/g, '').trim();
-      bodyParts.push(`${prop.name}: ${cleanValue}${important}`);
+      const line = `${prop.name}: ${cleanValue}${important}`;
+
+      if (seenProps.has(prop.name)) {
+        // CDP often lists webkit-prefixed values before standard ones.
+        // If the already-recorded value starts with -webkit-, replace it with
+        // this standard value so we don't emit e.g. display:-webkit-box instead of flex.
+        const existingIdx = seenProps.get(prop.name)!;
+        const existingValue = bodyParts[existingIdx].split(':').slice(1).join(':').trim();
+        if (existingValue.startsWith('-webkit-') && !cleanValue.startsWith('-webkit-')) {
+          bodyParts[existingIdx] = line;
+        }
+        continue;
+      }
+
+      seenProps.set(prop.name, bodyParts.length);
+      bodyParts.push(line);
     }
 
     if (bodyParts.length === 0) return null;
 
-    const body = bodyParts.join(';\n');
+    // Remove -webkit- prefixed properties that have a standard equivalent in the same rule
+    const standardPropNames = new Set(
+      bodyParts.map(p => p.split(':')[0].trim()).filter(p => !p.startsWith('-'))
+    );
+    const deduped = bodyParts.filter(p => {
+      const name = p.split(':')[0].trim();
+      if (name.startsWith('-webkit-')) {
+        return !standardPropNames.has(name.slice('-webkit-'.length));
+      }
+      return true;
+    });
+
+    const body = deduped.join(';\n');
     const media = (rule.media && rule.media.length > 0)
       ? rule.media.map(m => m.text).join(' and ')
       : '';

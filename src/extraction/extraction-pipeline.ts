@@ -62,15 +62,16 @@ export class ExtractionPipeline {
     let bp: BrowserPage | null = null;
 
     try {
-      // STEP 1: Create page and CDP session
+      // STEP 1: Create page and CDP session (does NOT navigate yet)
       bp = await this.browserManager.createPage(url);
       const { page, cdp } = bp;
 
-      // STEP 2: Start collecting stylesheets
+      // STEP 2: Attach stylesheet listener BEFORE navigation so CSS.styleSheetAdded
+      // events fired during page load are captured (fonts, 3rd-party stylesheets, etc.)
       await this.stylesheetCollector.startCollecting(cdp);
 
-      // Wait a moment for stylesheets to be collected
-      await page.waitForLoadState('networkidle');
+      // STEP 2b: Now navigate — all stylesheet events during load will be captured
+      await this.browserManager.navigatePage(bp, url);
 
       // STEP 3: Get DOM document
       const doc = await cdp.send('DOM.getDocument');
@@ -229,13 +230,13 @@ export class ExtractionPipeline {
           labeledHtml,
           result.css,
           ctx.snippedArr,
-          false, // forceBreakpoints
+          true, // forceBreakpoints
           resolveVariables,
           ctx
         );
         result.tailwindBodyClasses = getTailwindBodyClasses(
           ctx.snippedArr,
-          false,
+          true,
           resolveVariables,
           [], // tailwindUltimateArr - populated inside getTailwindBodyClasses
           ctx
@@ -446,13 +447,13 @@ export class ExtractionPipeline {
           labeledHtml,
           result.css,
           ctx.snippedArr,
-          false,
+          true,
           resolveVariables,
           ctx
         );
         result.tailwindBodyClasses = getTailwindBodyClasses(
           ctx.snippedArr,
-          false,
+          true,
           resolveVariables,
           [],
           ctx

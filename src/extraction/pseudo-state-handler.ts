@@ -74,10 +74,11 @@ export class PseudoStateHandler {
     const hoverRules: CDPRuleMatch[] = [];
 
     try {
-      // Force hover/active on the element
+      // Force hover on the element only — forcing active too causes active selectors
+      // to match and produce malformed active:hover: Tailwind prefixes
       await cdp.send('CSS.forcePseudoState', {
         nodeId,
-        forcedPseudoClasses: ['hover', 'active'],
+        forcedPseudoClasses: ['hover'],
       });
 
       // Force hover on parent elements too
@@ -94,7 +95,7 @@ export class PseudoStateHandler {
             parentNodes.push(pnode.nodeId);
             await cdp.send('CSS.forcePseudoState', {
               nodeId: pnode.nodeId,
-              forcedPseudoClasses: ['hover', 'active'],
+              forcedPseudoClasses: ['hover'],
             });
           }
         } catch {
@@ -107,26 +108,26 @@ export class PseudoStateHandler {
         nodeId,
       }) as CDPMatchedStyles;
 
-      // Collect normal hover rules
+      // Collect normal hover rules — strip matchingSelectors to only the :hover
+      // selector parts so the converter doesn't produce active:hover: or focus:hover: prefixes
       for (const matchNormal of allMatchedStyles2.matchedCSSRules || []) {
         const selectorText = matchNormal.rule.selectorList?.text || '';
         if (selectorText.includes(':hover')) {
           (matchNormal.rule as any).origin = 'pseudo';
-          hoverRules.push(matchNormal);
+          const selectors = matchNormal.rule.selectorList?.selectors || [];
+          const hoverOnlySelectors = matchNormal.matchingSelectors.filter((idx: number) => {
+            const selText = selectors[idx]?.text || '';
+            return selText.includes(':hover');
+          });
+          hoverRules.push({
+            ...matchNormal,
+            matchingSelectors: hoverOnlySelectors.length > 0 ? hoverOnlySelectors : matchNormal.matchingSelectors,
+          });
         }
       }
 
-      // Collect inherited hover rules
-      for (const inheritMatch of allMatchedStyles2.inherited || []) {
-        for (const iRule of inheritMatch.matchedCSSRules || []) {
-          const selectorText = iRule.rule.selectorList?.text || '';
-          if (selectorText.includes(':hover')) {
-            (iRule as any).inherited = true;
-            (iRule.rule as any).origin = 'pseudo';
-            hoverRules.push(iRule);
-          }
-        }
-      }
+      // Note: inherited hover rules are intentionally excluded — parent :hover rules
+      // applied via inheritance would bleed hover: classes onto child elements
 
       // Collect pseudo-element hover rules
       for (const pseudoMatch of allMatchedStyles2.pseudoElements || []) {
@@ -199,7 +200,7 @@ export class PseudoStateHandler {
             parentNodes.push(pnode.nodeId);
             await cdp.send('CSS.forcePseudoState', {
               nodeId: pnode.nodeId,
-              forcedPseudoClasses: ['hover', 'active'],
+              forcedPseudoClasses: ['hover'],
             });
           }
         } catch {

@@ -8,11 +8,11 @@
     "sourceMap": false,
     "baseUrl": ".",
     "paths": {
-      "playwright": ["../node_modules/playwright"],
-      "playwright-core": ["../node_modules/playwright-core"],
-      "playwright-core/*": ["../node_modules/playwright-core/*"]
+      "playwright": ["../node_modules/patchright"],
+      "playwright-core": ["../node_modules/patchright-core"],
+      "playwright-core/*": ["../node_modules/patchright-core/*"]
     }
   },
   "include": ["src/**/*", "../src/**/*"],
-  "exclude": ["../node_modules", "../dist", "dist", "node_modules"]
+  "exclude": ["../node_modules", "../dist", "dist", "node_modules", "../src/email/**/*"]
 }

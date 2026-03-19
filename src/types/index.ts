@@ -196,6 +196,7 @@ export interface ExtractionResult {
   css: string;
   tailwindHtml: string;
   tailwindBodyClasses: string;
+  tailwindCss: string;
   fonts: FontData[];
   cssVariables: Record<string, string>;
 }

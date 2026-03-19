@@ -664,7 +664,7 @@ try {
             snip_fonturls: fontUrls,
             tailwind_body_classes: tailwindBodyClassesArr,
             tailwind_html: result.tailwindHtml ?? '',
-            tailwind_css: '',
+            tailwind_css: result.tailwindCss,
             snip_uid: snippetUid,
           }, APIFY_SERVICE_TOKEN, BASE_URL);
 

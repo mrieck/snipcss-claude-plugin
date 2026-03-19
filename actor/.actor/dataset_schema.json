@@ -1,0 +1,100 @@
+{
+    "actorSpecification": 1,
+    "fields": {
+        "type": "object",
+        "properties": {
+            "url": {
+                "type": "string",
+                "description": "The URL that was scraped"
+            },
+            "selectors": {
+                "type": "array",
+                "description": "CSS selectors that were extracted (empty for auto-segment mode)",
+                "items": {
+                    "type": "string"
+                }
+            },
+            "automation_uid": {
+                "type": "string",
+                "description": "Unique identifier for this automation run"
+            },
+            "timestamp": {
+                "type": "string",
+                "description": "ISO timestamp of when the extraction started"
+            },
+            "duration_ms": {
+                "type": "number",
+                "description": "Duration of the extraction in milliseconds"
+            },
+            "status": {
+                "type": "string",
+                "description": "Status of the extraction (completed, timeout, error)"
+            },
+            "extracted_data": {
+                "type": "array",
+                "description": "Array of extracted segments with HTML, CSS, and assets",
+                "items": {
+                    "type": "object"
+                }
+            },
+            "screenshots": {
+                "type": "array",
+                "description": "Screenshot metadata for desktop, mobile, and iPad views",
+                "items": {
+                    "type": "object"
+                }
+            },
+            "preview_link": {
+                "type": "object",
+                "description": "Preview link information if save_preview was enabled"
+            }
+        }
+    },
+    "views": {
+        "overview": {
+            "title": "Overview",
+            "description": "High-level overview of extraction results",
+            "transformation": {
+                "fields": [
+                    "url",
+                    "status",
+                    "selectors",
+                    "preview_link.url",
+                    "timestamp",
+                    "duration_ms"
+                ],
+                "flatten": ["preview_link"]
+            },
+            "display": {
+                "component": "table",
+                "properties": {
+                    "url": { "label": "Target URL", "format": "link" },
+                    "status": { "label": "Status", "format": "text" },
+                    "selectors": { "label": "Selectors", "format": "array" },
+                    "preview_link.url": { "label": "Preview Link", "format": "link" },
+                    "timestamp": { "label": "Date", "format": "date" },
+                    "duration_ms": { "label": "Duration (ms)", "format": "number" }
+                }
+            }
+        },
+        "extracted_segments": {
+            "title": "Extracted Segments",
+            "description": "Detailed view of all extracted segments with HTML, CSS, and assets",
+            "transformation": {
+                "fields": ["url", "extracted_data"],
+                "unwind": ["extracted_data"]
+            },
+            "display": {
+                "component": "table",
+                "properties": {
+                    "url": { "label": "Source URL", "format": "link" },
+                    "selector": { "label": "CSS Selector", "format": "text" },
+                    "snip_html": { "label": "HTML", "format": "text" },
+                    "snip_css": { "label": "CSS", "format": "text" },
+                    "images": { "label": "Images", "format": "array" },
+                    "fonts": { "label": "Fonts", "format": "array" }
+                }
+            }
+        }
+    }
+}

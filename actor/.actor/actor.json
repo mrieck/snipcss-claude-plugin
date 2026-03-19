@@ -1,0 +1,16 @@
+{
+	"actorSpecification": 1,
+	"name": "snipcss-actor",
+	"title": "SnipCSS Automation - Extract HTML/CSS sections to recreate designs easily",
+	"description": "SnipCSS extracts HTML/CSS from page sections using native CDP (no extension required)",
+	"version": "0.4",
+	"buildTag": "latest",
+	"meta": {
+		"templateId": "js-empty"
+	},
+	"dockerfile": "../Dockerfile",
+	"input": "./input_schema.json",
+	"storages": {
+		"dataset": "./dataset_schema.json"
+	}
+}

@@ -12,7 +12,9 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "start": "node dist/index.js",
-    "mcp": "node dist/mcp-server.js"
+    "mcp": "node dist/mcp-server.js",
+    "build:actor": "tsc -p actor/tsconfig.json",
+    "actor": "node actor/dist/actor/src/main.js"
   },
   "author": "Productive Mark LLC",
   "license": "UNLICENSED",

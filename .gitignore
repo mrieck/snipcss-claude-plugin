@@ -5,6 +5,10 @@ dist/
 *.html
 test-cdp.js
 
+# Local test inputs and Apify actor storage (contain internal site references)
+actor/test_*.json
+actor/storage/
+
 # OS files
 .DS_Store
 Thumbs.db

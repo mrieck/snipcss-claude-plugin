@@ -91,9 +91,16 @@ export class BrowserManager {
 
   async navigatePage(bp: BrowserPage, url: string, timeout = 30000): Promise<void> {
     await bp.page.goto(url, {
-      waitUntil: 'networkidle',
+      waitUntil: 'domcontentloaded',
       timeout,
     });
+    // Best-effort wait for network idle (e.g. lazy-loaded styles), but don't
+    // fail on Cloudflare-protected or SPA sites that keep connections open.
+    try {
+      await bp.page.waitForLoadState('networkidle', { timeout: 15000 });
+    } catch {
+      // Page is usable at domcontentloaded — continue with extraction
+    }
   }
 
   async createPageFromHtml(html: string, baseUrl?: string, timeout = 30000): Promise<BrowserPage> {

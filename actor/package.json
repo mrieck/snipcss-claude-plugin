@@ -1,6 +1,6 @@
 {
   "name": "snipcss-actor",
-  "version": "0.1.0",
+  "version": "0.4",
   "type": "module",
   "description": "SnipCSS Apify Actor - Extract HTML/CSS sections to recreate designs easily",
   "engines": {

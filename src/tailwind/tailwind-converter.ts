@@ -650,7 +650,7 @@ function processPseudoRanges(
       }
     }
   } else {
-    // Original chaining behavior
+    // Original chaining behavior for other cases
     let propKey = basePropKey;
     let pseudoPrefix = '';
     for (const pe of allPseudo) {
@@ -847,6 +847,13 @@ export function getTailwindHtml(
       const matchData = ctx.matchingFinalRules[currClass];
       if (!matchData) continue;
 
+      ctx.logger?.(`ELEMENT class=${currClass} rule_count=${matchData.selectors.length}`);
+      ctx.logger?.(`  selectors=${JSON.stringify(matchData.selectors)}`);
+      ctx.logger?.(`  media=${JSON.stringify(matchData.media_queries)}`);
+      ctx.logger?.(`  matching_parts=${JSON.stringify(matchData.matching_parts)}`);
+      ctx.logger?.(`  inherited_classes=${JSON.stringify(matchData.inherited_classes)}`);
+      ctx.logger?.(`  bodies=${JSON.stringify(matchData.bodies)}`);
+
       const allSelectors = matchData.selectors;
       const allMedia = matchData.media_queries;
       const allMatchingIndices = matchData.indices;
@@ -983,6 +990,7 @@ export function getTailwindHtml(
                     }
 
                     const tailClass = cssToTailwind(longProp, longVal);
+                    ctx.logger?.(`  PROP_SHORT ${tProp} → ${longProp}: ${longVal} → tailwind=${tailClass ?? 'null'} media=${myMedia} pseudo=${JSON.stringify(allPseudo)}`);
                     if (!tailClass) continue;
                     currMediaRange['tailwind_classes'] = [
                       ...(currMediaRange['tailwind_classes'] || []),
@@ -1045,6 +1053,7 @@ export function getTailwindHtml(
 
                   if (overrideClasses == null) {
                     const tailClass = cssToTailwind(tProp, tVal);
+                    ctx.logger?.(`  PROP ${tProp}: ${tVal} → tailwind=${tailClass ?? 'null'} media=${myMedia} pseudo=${JSON.stringify(allPseudo)}`);
                     if (!tailClass) continue;
                     currMediaRange['tailwind_classes'] = [
                       ...(currMediaRange['tailwind_classes'] || []),

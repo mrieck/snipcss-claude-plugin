@@ -1,8 +1,12 @@
 import { Actor } from 'apify';
 import crypto from 'crypto';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 import Jimp from 'jimp';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import dotenv from 'dotenv';
+import { initLogger, log, closeLogger } from './logger.js';
 import type { Page } from 'playwright';
 import { BrowserManager } from '../../src/browser/browser-manager.js';
 import { ExtractionPipeline } from '../../src/extraction/extraction-pipeline.js';
@@ -513,7 +517,13 @@ async function takeResultScreenshots(
 const SNIPCSS_API_BASE_URL = 'https://templates.snipcss.com';
 const APIFY_SERVICE_TOKEN = 'apify_service_token_placeholder'; // TODO: Replace with actual token
 
+const __actorFilename = fileURLToPath(import.meta.url);
+const __actorDirname = dirname(__actorFilename);
+// actor/dist/actor/src/ → up 3 levels → actor/ → logs/
+const LOGS_DIR = path.join(__actorDirname, '../../..', 'logs');
+
 await Actor.init();
+await initLogger(LOGS_DIR);
 
 const BASE_URL = SNIPCSS_API_BASE_URL;
 console.log(`Using API Base URL: ${BASE_URL}`);
@@ -567,6 +577,7 @@ try {
 
   const screenshotBp = await browserManager.createPage(url);
   const page = screenshotBp.page;
+  await browserManager.navigatePage(screenshotBp, url);
 
   // Determine target selectors
   let targetSelectors: string[] = selectors;
@@ -619,6 +630,7 @@ try {
         viewport: 'all',
         resolveVariables: true,
         includeHoverStates: true,
+        logger: log,
       });
 
       const fontUrls = result.fonts.map((f) => f.font_url).filter(Boolean);
@@ -731,6 +743,7 @@ try {
 } catch (error: unknown) {
   const e = error as Error;
   console.error('Error during execution:', e);
+  await closeLogger();
   await Actor.pushData({
     url, mode, selectors,
     timestamp: new Date().toISOString(),
@@ -741,5 +754,6 @@ try {
   throw error;
 }
 
+await closeLogger();
 console.log('SnipCSS Actor completed successfully!');
 await Actor.exit();

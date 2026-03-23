@@ -52,6 +52,7 @@ export class ExtractionPipeline {
   ): Promise<ExtractionResult> {
     const ctx = new ExtractionContext();
     ctx.siteUrl = url;
+    ctx.logger = options.logger;
 
     const resolveVariables = options.resolveVariables !== false;
     const includeHoverStates = options.includeHoverStates !== false;

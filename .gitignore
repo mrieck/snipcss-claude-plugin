@@ -9,6 +9,9 @@ test-cdp.js
 actor/test_*.json
 actor/storage/
 
+# Local actor run logs (generated at runtime, not committed)
+actor/logs/
+
 # OS files
 .DS_Store
 Thumbs.db

@@ -173,6 +173,18 @@ export class StyleMatcher {
     if (rule.origin === 'user-agent') return null;
 
     const selectorText = rule.selectorList?.text || '';
+    // Resolve the specific matched selector part(s) using matchingSelectors indices.
+    // CDP's matchingSelectors tells us which comma-parts of a multi-selector rule actually
+    // matched (e.g. for "a:hover, a:focus", hover-forcing returns index 0 only).
+    // We store this separately so rule-deduplicator can use it for matching_parts,
+    // keeping allPseudo to a single pseudo per pass (matching old extension behavior).
+    const allSelectors = rule.selectorList?.selectors || [];
+    const matchedParts = (ruleMatch.matchingSelectors || [])
+      .map((i: number) => allSelectors[i]?.text)
+      .filter(Boolean) as string[];
+    const matchedSelectorText = matchedParts.length > 0
+      ? matchedParts.join(', ')
+      : selectorText;
     const cssProperties = rule.style.cssProperties || [];
 
     // Build CSS body from properties
@@ -242,6 +254,7 @@ export class StyleMatcher {
 
     return {
       selector: selectorText,
+      matched_selector: matchedSelectorText !== selectorText ? matchedSelectorText : undefined,
       body,
       media,
       classname,

@@ -119,6 +119,7 @@ export interface StylesheetInfo {
 
 export interface SnippedRule {
   selector: string;
+  matched_selector?: string;  // The specific selector part(s) that matched (vs full comma-separated selector)
   body: string;
   media: string;
   classname: string;
@@ -189,6 +190,7 @@ export interface ExtractionOptions {
   includeHoverStates?: boolean;
   removeUnusedClasses?: boolean;
   removeUnusedAttributes?: boolean;
+  logger?: (msg: string) => void;
 }
 
 export interface ExtractionResult {
@@ -236,6 +238,7 @@ export class ExtractionContext {
   noPseudoSelectors: Record<string, string> = {};
   existingQueryRanges: Record<string, boolean> = {};
   siteUrl: string = '';
+  logger?: (msg: string) => void;
 
   reset(): void {
     this.snippedArr = [];

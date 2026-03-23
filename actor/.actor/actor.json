@@ -12,5 +12,14 @@
 	"input": "./input_schema.json",
 	"storages": {
 		"dataset": "./dataset_schema.json"
+	},
+	"charging": {
+		"strategy": "pay_per_event",
+		"eventNames": {
+			"SEGMENT_EXTRACTED": {
+				"title": "Segment extracted",
+				"description": "Charged for each CSS/HTML segment successfully extracted from the page"
+			}
+		}
 	}
 }

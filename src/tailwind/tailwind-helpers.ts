@@ -534,7 +534,7 @@ const validPseudos = [
   'disabled', 'enabled', 'checked', 'indeterminate', 'default',
   'required', 'valid', 'invalid', 'in-range', 'out-of-range',
   'placeholder-shown', 'autofill', 'read-only', 'before', 'after',
-  'placeholder', 'file', 'marker', 'selection', 'first-line',
+  'placeholder', 'file', 'selection', 'first-line',
   'first-letter', 'dark', 'print', 'portrait', 'landscape',
 ];
 

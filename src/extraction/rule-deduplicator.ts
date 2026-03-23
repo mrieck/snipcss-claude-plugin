@@ -54,7 +54,7 @@ export class RuleDeduplicator {
     entry.selectors.push(rule.selector);
     entry.bodies.push(rule.body);
     entry.media_queries.push(rule.media);
-    entry.matching_parts.push([rule.selector]);
+    entry.matching_parts.push([rule.matched_selector ?? rule.selector]);
     entry.contain_type.push('default');
     entry.inherited_type.push(rule.is_inherited ? 'inherited' : 'default');
     entry.inherited_classes.push([]);

@@ -102,13 +102,56 @@ export class ResultBuilder {
       finalCss = this.variableResolver.resolveVarReferences(finalCss, ctx);
     }
 
-    // Build tailwindCss: @font-face + @keyframes needed for Tailwind HTML to render correctly
+    // Build tailwindCss: font imports + @font-face + global body/html/:root rules + @keyframes
+    // needed for Tailwind HTML to render correctly in an isolated context
     const tailwindCssLines: string[] = [];
+
+    // Google font imports
+    for (const importUrl of ctx.importfontsArr) {
+      tailwindCssLines.push(`@import url("${importUrl}");`);
+    }
+
+    // @font-face declarations
     for (const font of ctx.customfontsArr) {
       if (usedFontFamilies.has(font.font_family.toLowerCase()) && font.full_rule) {
         tailwindCssLines.push(font.full_rule);
       }
     }
+
+    // Global CSS rules (body, html, :root) — needed for correct rendering of Tailwind HTML
+    const globalSelectors = new Set(['body', 'html', ':root', '*']);
+    const globalNoMedia: SnippedRule[] = [];
+    const globalMediaGroups = new Map<string, SnippedRule[]>();
+    for (const rule of ctx.snippedArr) {
+      const sel = rule.selector.trim().toLowerCase();
+      if (globalSelectors.has(sel)) {
+        if (rule.media) {
+          if (!globalMediaGroups.has(rule.media)) globalMediaGroups.set(rule.media, []);
+          globalMediaGroups.get(rule.media)!.push(rule);
+        } else {
+          globalNoMedia.push(rule);
+        }
+      }
+    }
+    if (globalNoMedia.length > 0) {
+      tailwindCssLines.push('');
+      for (const rule of globalNoMedia) {
+        tailwindCssLines.push(`${rule.selector} {`);
+        tailwindCssLines.push(this.formatRuleBody(rule.body));
+        tailwindCssLines.push('}');
+      }
+    }
+    for (const [media, rules] of globalMediaGroups) {
+      tailwindCssLines.push(`@media ${media} {`);
+      for (const rule of rules) {
+        tailwindCssLines.push(`  ${rule.selector} {`);
+        tailwindCssLines.push(this.formatRuleBody(rule.body).split('\n').map(l => '  ' + l).join('\n'));
+        tailwindCssLines.push('  }');
+      }
+      tailwindCssLines.push('}');
+    }
+
+    // @keyframes
     const keyframesCssForTailwind = this.keyframeCollector.generateCss(ctx);
     if (keyframesCssForTailwind) {
       tailwindCssLines.push(keyframesCssForTailwind);

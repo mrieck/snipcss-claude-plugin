@@ -372,6 +372,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       // } else
       if (args?.url) {
         bp = await browserManager.createPage(args.url as string);
+        await browserManager.navigatePage(bp, args.url as string);
         pageTitle = args.url as string;
       } else {
         return {

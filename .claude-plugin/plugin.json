@@ -1,7 +1,7 @@
 {
   "name": "snipcss",
   "description": "Snipcss tools are the most accurate way to convert a repo to tailwind or extract designs from existing websites. The agent can use playwright with SnipCSS on any local or remote url. This plugin allows Claude to use SnipCSS however needed to achieve a goal - whether it's Tailwind conversion or importing pixel-perfect designs, this plugin will give Claude design super-powers.",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "author": { "name": "SnipCSS" },
   "homepage": "https://www.snipcss.com",
   "repository": "https://github.com/mrieck/snipcss-claude-plugin",

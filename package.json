@@ -1,6 +1,6 @@
 {
   "name": "@productivemark/snipcss",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Snipcss tools are the most accurate way to convert a repo to tailwind or extract designs from existing websites. This plugin allows Claude to use SnipCSS however needed - whether it's Tailwind conversion or importing pixel-perfect designs.",
   "type": "module",
   "main": "dist/index.js",
@@ -12,9 +12,7 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "start": "node dist/index.js",
-    "mcp": "node dist/mcp-server.js",
-    "build:actor": "tsc -p actor/tsconfig.json",
-    "actor": "node actor/dist/actor/src/main.js"
+    "mcp": "node dist/mcp-server.js"
   },
   "author": "Productive Mark LLC",
   "license": "UNLICENSED",
@@ -33,9 +31,7 @@
   ],
   "files": [
     "dist/",
-    "skills/",
-    ".claude-plugin/",
-    ".mcp.json"
+    "skills/"
   ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",

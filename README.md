@@ -73,6 +73,29 @@ SnipCSS connects Claude to a headless browser that inspects live pages using Chr
 
 ---
 
+## Updating the Plugin
+
+If you're getting errors after an update, clear the plugin cache first, then reinstall.
+
+**macOS / Linux:**
+```bash
+rm -rf ~/.claude/plugins/cache/snipcss/
+```
+
+**Windows (PowerShell):**
+```powershell
+Remove-Item -Recurse -Force "$env:USERPROFILE\.claude\plugins\cache\snipcss"
+```
+
+Then remove and reinstall:
+```
+/plugin marketplace remove mrieck/snipcss-claude-plugin
+/plugin marketplace add mrieck/snipcss-claude-plugin
+/plugin install snipcss@snipcss
+```
+
+---
+
 ## npm Package
 
 ```

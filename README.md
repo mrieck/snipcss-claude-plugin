@@ -89,7 +89,7 @@ Remove-Item -Recurse -Force "$env:USERPROFILE\.claude\plugins\cache\snipcss"
 
 Then remove and reinstall:
 ```
-/plugin marketplace remove mrieck/snipcss-claude-plugin
+/plugin marketplace remove snipcss
 /plugin marketplace add mrieck/snipcss-claude-plugin
 /plugin install snipcss@snipcss
 ```

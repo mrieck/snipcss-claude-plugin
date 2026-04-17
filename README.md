@@ -1,3 +1,35 @@
+# ⚠️ SnipCSS — Service Disruption Notice
+ 
+> **Status: Offline** — I am actively working to restore full service. Updates will be posted here.
+ 
+---
+ 
+## What Happened
+ 
+SnipCSS was targeted in a cyberattack. My Gmail accounts, website, domains, and SaaS infrastructure were all compromised in a coordinated takeover. I have been locked out of critical accounts and the service has been forced offline as a result.
+ 
+I am currently working with domain registrars, email providers, and hosting services to verify ownership and reclaim control of everything.
+ 
+---
+ 
+## Current Status
+ 
+| Service | Status |
+|---|---|
+| Gmail / email accounts | 🔴 Compromised — recovery in progress |
+| snipcss.com domain & website | 🔴 Taken over — working with registrar |
+| npm package (`@productivemark/snipcss`) | 🟡 Monitoring for tampering — use with caution |
+| Claude Code plugin & MCP server | 🟡 Suspended pending domain restoration |
+| Full service restoration | ⚪ In progress — updates to follow |
+ 
+---
+ 
+## 🎁 A Promise to Every Paying Customer
+ 
+Once SnipCSS is back online, **every customer who had an active paid plan at the time of the attack will receive a lifetime Pro subscription — free, forever.**
+ 
+You supported this project and you will be taken care of. No action needed on your part — I have the records and will apply this automatically when service is restored.
+
 # SnipCSS — Claude Code Plugin & MCP Server
 
 Extract pixel-perfect CSS from any live webpage and convert it to Tailwind. The most accurate way to clone designs or migrate an existing codebase to Tailwind — powered by Chrome DevTools Protocol.

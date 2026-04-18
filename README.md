@@ -16,10 +16,10 @@ I am currently working with domain registrars, email providers, and hosting serv
  
 | Service | Status |
 |---|---|
-| Gmail / email accounts | 🔴 Compromised — recovery in progress |
-| snipcss.com domain & website | 🔴 Taken over — working with registrar |
-| npm package (`@productivemark/snipcss`) | 🟡 Monitoring for tampering — use with caution |
-| Claude Code plugin & MCP server | 🟡 Suspended pending domain restoration |
+| Gmail / email accounts | 🔴 Compromised — recovery seems impossible via Google recovery flow |
+| snipcss.com domain & website | 🟡 Have control, in progress bringing back online |
+| npm package (`@productivemark/snipcss`), github and extension | 🟢 No changes to code or packages |
+| Claude Code plugin & MCP server | 🟡 Using Pro key not working due to server being down |
 | Full service restoration | ⚪ In progress — updates to follow |
  
 ---

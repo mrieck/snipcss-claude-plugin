@@ -26,10 +26,8 @@ I am currently working with domain registrars, email providers, and hosting serv
  
 ## 🎁 A Promise to Every Paying Customer
  
-Once SnipCSS is back online, **every customer who had an active paid plan at the time of the attack will receive a lifetime Pro subscription — free, forever.**
+Once SnipCSS is back online, **every customer who had an active paid plan can email support@snipcss.com to receive a lifetime Pro subscription for free.**
  
-You supported this project and you will be taken care of. No action needed on your part — I have the records and will apply this automatically when service is restored.
-
 # SnipCSS — Claude Code Plugin & MCP Server
 
 Extract pixel-perfect CSS from any live webpage and convert it to Tailwind. The most accurate way to clone designs or migrate an existing codebase to Tailwind — powered by Chrome DevTools Protocol.
